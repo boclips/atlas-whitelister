@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+set -eu
+
+api=https://cloud.mongodb.com/api/atlas/v1.0
+comment=k8s-nodes
+onlyK8sNodes="| select(.comment == \"$comment\") "
+
+[[ -z $ATLAS_GROUP_ID ]] &&
+    echo "Need ATLAS_GROUP_ID" &&
+    exit 1
+
+[[ -z $ATLAS_USERNAME ]] &&
+    echo "Need ATLAS_USERNAME" &&
+    exit 1
+
+[[ -z $ATLAS_API_KEY ]] &&
+    echo "Need ATLAS_API_KEY" &&
+    exit 1
+
+log () {
+    echo "$(date -Iseconds)" "$@"
+}
+
+request () {
+    curl \
+        --silent \
+        --user "$ATLAS_USERNAME:$ATLAS_API_KEY" \
+        --digest \
+        --header "Accept: application/json" \
+        --header "Content-Type: application/json" \
+        "$@"
+    echo
+}
+
+existing_cidrs () {
+    request \
+        --request GET \
+        "$api/groups/$ATLAS_GROUP_ID/whitelist" \
+        | jq -r ".results[] $onlyK8sNodes | .cidrBlock"
+}
+
+current_node_ips () {
+    kubectl \
+        get nodes \
+        --output jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
+}
+
+whitelist_excluding_ips () {
+    ips_to_exclude=$1
+
+    excludeFilters=""
+    for ip in $ips_to_exclude
+    do
+        excludeFilters+="| select(.ipAddress != \"$ip\") "
+    done
+
+    request \
+        --request GET \
+        "$api/groups/$ATLAS_GROUP_ID/whitelist" \
+        | jq -r ".results[] $onlyK8sNodes $excludeFilters | .ipAddress"
+}
+
+map_ips_to_json () {
+    entries=""
+    for ip in $1
+    do
+        entries+="{\"ipAddress\": \"$ip\",\"comment\": \"$comment\"},"
+    done
+    echo "${entries::-1}"
+}
+
+node_ips=$(current_node_ips)
+cidrs_before=$(existing_cidrs)
+
+log "Existing node CIDRs in whitelist:"
+for cidr in $cidrs_before
+do
+    log $cidr
+done
+
+log "Current node IPs:"
+for ip in $node_ips
+do
+    log $ip
+done
+
+log "Creating entries for current nodes:"
+request \
+    --request POST \
+    "$api/groups/$ATLAS_GROUP_ID/whitelist" \
+    --data "[$(map_ips_to_json $node_ips)]"
+
+cidrs_after=$(existing_cidrs)
+log "Node CIDRs in whitelist are now:"
+for cidr in $cidrs_after
+do
+    log $cidr
+done
+
+deletable_ips=$(whitelist_excluding_ips "$node_ips")
+for ip in $deletable_ips
+do
+    log "Deleting outdated whitelist entry $ip:"
+    request \
+        --request DELETE \
+        "$api/groups/$ATLAS_GROUP_ID/whitelist/$ip"
+done
