@@ -10,7 +10,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: atlas-whitelister
-        image: boclips/atlas-whitelister
+        image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
         envFrom:
         - secretRef:
             name: atlas-credentials
