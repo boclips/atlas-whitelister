@@ -1,0 +1,99 @@
+---
+jobs:
+- name: build
+  plan:
+  - get: source
+    trigger: true
+  - put: version
+    params:
+      bump: minor
+  - put: container-registry
+    params:
+      build: source
+      additional_tags: version/version
+      tag_as_latest: true
+
+- name: deploy-staging
+  plan:
+  - get: version
+    passed: [build]
+    trigger: true
+  - get: source
+    passed: [build]
+  - get: infrastructure
+  - task: render-manifests
+    file: infrastructure/concourse/tasks/render-manifests.yml
+    params:
+      INPUT_MANIFESTS_DIR: source/k8s
+  - put: staging
+    params:
+      kubectl: apply -f rendered_manifests/all.yaml
+
+- name: deploy-production
+  plan:
+  - get: version
+    passed: [deploy-staging]
+  - get: source
+    passed: [deploy-staging]
+  - get: infrastructure
+  - task: render-manifests
+    file: infrastructure/concourse/tasks/render-manifests.yml
+    params:
+      INPUT_MANIFESTS_DIR: source/k8s
+  - put: production
+    params:
+      kubectl: apply -f rendered_manifests/all.yaml
+
+resources:
+- name: source
+  type: git
+  source:
+    uri: https://github.com/knowledgemotion/atlas-whitelister.git
+    branch: master
+
+- name: infrastructure
+  type: git
+  source:
+    branch: master
+    private_key: {{infrastructure-repo-key}}
+    uri: git@github.com:knowledgemotion/infrastructure.git
+
+- name: version
+  type: semver
+  source:
+    initial_version: "0.0.0"
+    driver: git
+    uri: git@github.com:knowledgemotion/versions.git
+    branch: master
+    file: atlas-whitelister
+    private_key: {{versions-repo-key}}
+
+- name: container-registry
+  type: docker-image
+  source:
+    repository: eu.gcr.io/boclips-prod/boclips/atlas-whitelister
+    username: _json_key
+    password: {{gcr-key}}
+
+- name: staging
+  type: kubernetes
+  source:
+    server: {{kubernetes-server}}
+    namespace: staging
+    token: {{kubernetes-staging-token}}
+    certificate_authority: {{kubernetes-staging-ca}}
+
+- name: production
+  type: kubernetes
+  source:
+    server: {{kubernetes-server}}
+    namespace: production
+    token: {{kubernetes-production-token}}
+    certificate_authority: {{kubernetes-production-ca}}
+
+resource_types:
+- name: kubernetes
+  type: docker-image
+  source:
+    repository: zlabjp/kubernetes-resource
+    tag: "1.10"
