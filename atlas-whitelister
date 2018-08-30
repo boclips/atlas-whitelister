@@ -19,7 +19,7 @@ onlyK8sNodes="| select(.comment == \"$comment\") "
     exit 1
 
 log () {
-    echo "$(date -Iseconds)" "$@"
+    echo "$(date +"%F %T%z")" "$@"
 }
 
 request () {
@@ -63,11 +63,11 @@ whitelist_excluding_ips () {
 
 map_ips_to_json () {
     entries=""
-    for ip in $1
+    for ip in "$@"
     do
         entries+="{\"ipAddress\": \"$ip\",\"comment\": \"$comment\"},"
     done
-    echo "${entries::-1}"
+    echo "$entries" | sed 's/,$//'
 }
 
 node_ips=$(current_node_ips)
