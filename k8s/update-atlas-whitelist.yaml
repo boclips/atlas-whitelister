@@ -1,0 +1,23 @@
+---
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: atlas-whitelister
+spec:
+  parallelism: 1
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: atlas-whitelister
+        image: boclips/atlas-whitelister
+        envFrom:
+        - secretRef:
+            name: atlas-credentials
+        resources:
+          requests:
+            cpu: 1m
+            memory: 10Mi
+          limits:
+            cpu: 10m
+            memory: 10Mi
