@@ -17,7 +17,7 @@ spec:
             image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
             envFrom:
             - secretRef:
-                name: atlas-credentials
+                name: atlas-whitelister
             resources:
               requests:
                 cpu: 1m
