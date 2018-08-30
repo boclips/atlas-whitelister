@@ -1,23 +1,27 @@
 ---
-kind: Job
-apiVersion: batch/v1
+kind: CronJob
+apiVersion: batch/v1beta1
 metadata:
   name: atlas-whitelister
 spec:
-  parallelism: 1
-  template:
+  concurrencyPolicy: "Forbid"
+  schedule: "* * * * *"
+  jobTemplate:
     spec:
-      restartPolicy: OnFailure
-      containers:
-      - name: atlas-whitelister
-        image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
-        envFrom:
-        - secretRef:
-            name: atlas-credentials
-        resources:
-          requests:
-            cpu: 1m
-            memory: 10Mi
-          limits:
-            cpu: 10m
-            memory: 10Mi
+      parallelism: 1
+      template:
+        spec:
+          restartPolicy: 'Never'
+          containers:
+          - name: atlas-whitelister
+            image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
+            envFrom:
+            - secretRef:
+                name: atlas-credentials
+            resources:
+              requests:
+                cpu: 1m
+                memory: 10Mi
+              limits:
+                cpu: 10m
+                memory: 10Mi
