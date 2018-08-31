@@ -88,7 +88,7 @@ log "Creating entries for current nodes:"
 request \
     --request POST \
     "$api/groups/$ATLAS_GROUP_ID/whitelist" \
-    --data "[$(map_ips_to_json $node_ips)]"
+    --data "$(map_ips_to_json $node_ips)"
 
 cidrs_after=$(existing_cidrs)
 log "Node CIDRs in whitelist are now:"
