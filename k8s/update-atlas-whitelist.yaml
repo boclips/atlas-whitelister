@@ -5,7 +5,7 @@ metadata:
   name: atlas-whitelister
 spec:
   concurrencyPolicy: "Forbid"
-  schedule: "* * * * *"
+  schedule: "* * * * */2"
   jobTemplate:
     spec:
       parallelism: 1
