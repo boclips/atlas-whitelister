@@ -94,7 +94,7 @@ log "$(
 jq \
     --null-input \
     --compact-output \
-    --arg atlas_response: "$atlas_response" \
+    --argjson atlas_response "$atlas_response" \
     --arg node_ips "$node_ips" \
     --arg cidrs_before "$cidrs_before" \
     --arg cidrs_after "$cidrs_after" \
@@ -106,5 +106,6 @@ jq \
         deletedIPs: $deleted_ips
      }
      | .[] |= split(" ")
+     | . += { atlasResponse: $atlas_response }
      '
 )"
