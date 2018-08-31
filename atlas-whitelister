@@ -25,12 +25,13 @@ log () {
 request () {
     curl \
         --fail \
+        --silent \
+        --show-error \
         --user "$ATLAS_USERNAME:$ATLAS_API_KEY" \
         --digest \
         --header "Accept: application/json" \
         --header "Content-Type: application/json" \
         "$@"
-    echo
 }
 
 existing_cidrs () {
@@ -72,36 +73,38 @@ map_ips_to_json () {
 node_ips=$(current_node_ips)
 cidrs_before=$(existing_cidrs)
 
-log "Existing node CIDRs in whitelist:"
-for cidr in $cidrs_before
-do
-    log $cidr
-done
-
-log "Current node IPs:"
-for ip in $node_ips
-do
-    log $ip
-done
-
-log "Creating entries for current nodes:"
+atlas_response=$(
 request \
     --request POST \
     "$api/groups/$ATLAS_GROUP_ID/whitelist" \
     --data "$(map_ips_to_json $node_ips)"
+)
 
 cidrs_after=$(existing_cidrs)
-log "Node CIDRs in whitelist are now:"
-for cidr in $cidrs_after
-do
-    log $cidr
-done
 
 deletable_ips=$(whitelist_excluding_ips "$node_ips")
 for ip in $deletable_ips
 do
-    log "Deleting outdated whitelist entry $ip:"
     request \
         --request DELETE \
         "$api/groups/$ATLAS_GROUP_ID/whitelist/$ip"
 done
+
+log "$(
+jq \
+    --null-input \
+    --compact-output \
+    --arg atlas_response: "$atlas_response" \
+    --arg node_ips "$node_ips" \
+    --arg cidrs_before "$cidrs_before" \
+    --arg cidrs_after "$cidrs_after" \
+    --arg deleted_ips "$deletable_ips" \
+    '{
+        nodeIPs: $node_ips,
+        cidrsBefore: $cidrs_before,
+        cidrsAfter: $cidrs_after,
+        deletedIPs: $deleted_ips
+     }
+     | .[] |= split(" ")
+     '
+)"
