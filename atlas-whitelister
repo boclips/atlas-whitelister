@@ -94,6 +94,7 @@ done
 
 jq \
     --null-input \
+    --compact-output \
     --argjson atlas_response "$atlas_response" \
     --arg timestamp "$(date +%s)" \
     --arg node_ips "$node_ips" \
