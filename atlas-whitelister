@@ -24,7 +24,7 @@ log () {
 
 request () {
     curl \
-        --silent \
+        --fail \
         --user "$ATLAS_USERNAME:$ATLAS_API_KEY" \
         --digest \
         --header "Accept: application/json" \
