@@ -4,7 +4,6 @@ set -eu
 
 api=https://cloud.mongodb.com/api/atlas/v1.0
 comment=k8s-nodes
-onlyK8sNodes="| select(.comment == \"$comment\") "
 
 [[ -z $ATLAS_GROUP_ID ]] &&
     echo "Need ATLAS_GROUP_ID" &&
@@ -34,7 +33,10 @@ existing_cidrs () {
     request \
         --request GET \
         "$api/groups/$ATLAS_GROUP_ID/whitelist" \
-        | jq --raw-output ".results[] $onlyK8sNodes | .cidrBlock"
+        | jq \
+        --compact-output \
+        --arg comment $comment \
+        '[.results[] | select(.comment == $comment) | .cidrBlock]'
 }
 
 current_node_ips () {
@@ -55,7 +57,10 @@ whitelist_excluding_ips () {
     request \
         --request GET \
         "$api/groups/$ATLAS_GROUP_ID/whitelist" \
-        | jq --raw-output ".results[] $onlyK8sNodes $excludeFilters | .ipAddress"
+        | jq \
+        --raw-output \
+        --arg comment $comment \
+        ".results[] | select(.comment == \$comment) $excludeFilters | .ipAddress"
 }
 
 map_ips_to_json () {
@@ -83,17 +88,17 @@ for ip in $deletable_ips
 do
     request \
         --request DELETE \
-        "$api/groups/$ATLAS_GROUP_ID/whitelist/$ip"
+        "$api/groups/$ATLAS_GROUP_ID/whitelist/$ip" \
+        > /dev/null
 done
 
 jq \
     --null-input \
-    --compact-output \
     --argjson atlas_response "$atlas_response" \
     --arg timestamp "$(date +%s)" \
     --arg node_ips "$node_ips" \
-    --arg cidrs_before "$cidrs_before" \
-    --arg cidrs_after "$cidrs_after" \
+    --argjson cidrs_before "$cidrs_before" \
+    --argjson cidrs_after "$cidrs_after" \
     --arg deleted_ips "$deletable_ips" \
     '{
         nodeIPs: $node_ips,
@@ -101,7 +106,8 @@ jq \
         cidrsAfter: $cidrs_after,
         deletedIPs: $deleted_ips
      }
-     | .[] |= split(" ")
+     | .nodeIPs |= split(" ")
+     | .deletedIPs |= split("\n")
      | . += { atlasResponse: $atlas_response,
               timestamp: $timestamp }
      '
