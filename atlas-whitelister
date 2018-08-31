@@ -18,10 +18,6 @@ onlyK8sNodes="| select(.comment == \"$comment\") "
     echo "Need ATLAS_API_KEY" &&
     exit 1
 
-log () {
-    echo "$(date +"%F %T%z")" "$@"
-}
-
 request () {
     curl \
         --fail \
@@ -90,11 +86,11 @@ do
         "$api/groups/$ATLAS_GROUP_ID/whitelist/$ip"
 done
 
-log "$(
 jq \
     --null-input \
     --compact-output \
     --argjson atlas_response "$atlas_response" \
+    --arg timestamp "$(date +%s)" \
     --arg node_ips "$node_ips" \
     --arg cidrs_before "$cidrs_before" \
     --arg cidrs_after "$cidrs_after" \
@@ -106,6 +102,6 @@ jq \
         deletedIPs: $deleted_ips
      }
      | .[] |= split(" ")
-     | . += { atlasResponse: $atlas_response }
+     | . += { atlasResponse: $atlas_response,
+              timestamp: $timestamp }
      '
-)"
