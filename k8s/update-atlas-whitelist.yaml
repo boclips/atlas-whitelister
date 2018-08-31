@@ -12,6 +12,7 @@ spec:
       template:
         spec:
           restartPolicy: 'Never'
+          serviceAccountName: atlas-whitelister
           containers:
           - name: atlas-whitelister
             image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
