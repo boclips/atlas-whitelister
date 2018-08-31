@@ -37,7 +37,7 @@ existing_cidrs () {
     request \
         --request GET \
         "$api/groups/$ATLAS_GROUP_ID/whitelist" \
-        | jq -r ".results[] $onlyK8sNodes | .cidrBlock"
+        | jq --raw-output ".results[] $onlyK8sNodes | .cidrBlock"
 }
 
 current_node_ips () {
@@ -58,16 +58,15 @@ whitelist_excluding_ips () {
     request \
         --request GET \
         "$api/groups/$ATLAS_GROUP_ID/whitelist" \
-        | jq -r ".results[] $onlyK8sNodes $excludeFilters | .ipAddress"
+        | jq --raw-output ".results[] $onlyK8sNodes $excludeFilters | .ipAddress"
 }
 
 map_ips_to_json () {
-    entries=""
-    for ip in "$@"
-    do
-        entries+="{\"ipAddress\": \"$ip\",\"comment\": \"$comment\"},"
-    done
-    echo "$entries" | sed 's/,$//'
+    echo "$@" \
+        | jq \
+        --raw-input \
+        --arg comment $comment \
+        'split(" ") | map({ipAddress: ., comment: $comment})'
 }
 
 node_ips=$(current_node_ips)
