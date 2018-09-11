@@ -13,6 +13,20 @@ spec:
         spec:
           restartPolicy: 'Never'
           serviceAccountName: atlas-whitelister
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: priority
+                    operator: In
+                    values:
+                    - noncritical
+          tolerations:
+          - key: priority
+            operator: Equal
+            value: noncritical
+            effect: NoSchedule
           containers:
           - name: atlas-whitelister
             image: eu.gcr.io/boclips-prod/boclips/atlas-whitelister:${VERSION}
