@@ -1,5 +1,7 @@
 # atlas-whitelister
 
+**ARCHIVED**: we now use [Google Cloud NAT](https://cloud.google.com/nat/docs/overview) to get a single IP for our Kubernetes nodes.
+
 Whitelist k8s nodes on MongoDb Atlas.
 
 ## Use case
